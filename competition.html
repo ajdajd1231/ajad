@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>모집단위별 경쟁률 비교</title>
+<style>
+:root{
+  --blue:#0b4f9c;
+  --navy:#18324f;
+  --line:#dce3ea;
+  --text:#222;
+  --muted:#6d7680;
+  --green:#17936b;
+  --amber:#b8860b;
+  --red:#c8452f;
+  --bg:#f6f8fb;
+  --bar:#cfe0f2;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:"Pretendard","Noto Sans KR","Malgun Gothic",Arial,sans-serif;
+}
+.wrap{max-width:1100px;margin:auto;padding:0 20px}
+
+/* 헤더 */
+header{background:#fff;border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;
+  gap:20px;min-height:76px;padding-top:14px;padding-bottom:14px;flex-wrap:wrap}
+h1{margin:0;font-size:21px;color:var(--navy);letter-spacing:-.6px}
+header p{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.io{display:flex;gap:8px}
+.btn{border:1px solid var(--blue);background:#fff;color:var(--blue);
+  font-weight:700;font-size:12px;padding:9px 13px;border-radius:3px;cursor:pointer}
+.btn.solid{background:var(--blue);color:#fff}
+.btn:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+
+/* 샘플 경고 */
+.flag{background:#fff6e5;border-bottom:1px solid #ecd9ac}
+.flag .wrap{padding-top:11px;padding-bottom:11px;font-size:13px;color:#7a5c11}
+.flag b{color:#5d4409}
+
+/* 요약 */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}
+.stat{background:#fff;border:1px solid var(--line);border-radius:4px;padding:15px 16px}
+.stat span{display:block;font-size:11px;color:var(--muted);letter-spacing:.3px}
+.stat b{display:block;margin-top:7px;font-size:20px;color:var(--navy);
+  font-variant-numeric:tabular-nums}
+.stat small{display:block;margin-top:3px;font-size:11px;color:var(--muted)}
+
+/* 필터 */
+.panel{background:#fff;border:1px solid var(--line);border-radius:4px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px;
+  border-bottom:1px solid var(--line);background:#fbfcfd}
+.controls label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
+select,input[type=search]{border:1px solid #cfd8e3;border-radius:3px;
+  padding:7px 9px;font-size:13px;background:#fff;min-width:120px;font-family:inherit}
+.grow{flex:1;min-width:170px}
+.grow input{width:100%}
+
+/* 표 */
+.head{display:flex;justify-content:space-between;align-items:baseline;
+  padding:15px 16px;border-bottom:1px solid var(--line)}
+.head h2{margin:0;font-size:16px;color:var(--navy)}
+.head span{font-size:12px;color:var(--blue);font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:11px 12px;text-align:left;border-bottom:1px solid #eef1f4}
+th{font-size:11px;color:var(--muted);font-weight:700;background:#fafbfc;
+  position:sticky;top:0}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+tr:hover td{background:#f5f9ff}
+.rank{color:var(--muted);width:38px}
+.unit{font-weight:700;color:var(--navy)}
+.sub{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:2px}
+
+/* 경쟁률 막대 — 이 페이지의 핵심 */
+.rate{width:230px}
+.rate-in{display:flex;align-items:center;gap:9px}
+.track{flex:1;height:9px;background:#eef2f6;border-radius:2px;overflow:hidden}
+.fill{height:100%;background:var(--bar);border-radius:2px;
+  transition:width .45s cubic-bezier(.2,.8,.3,1)}
+.fill.hot{background:#e8b4a6}
+.fill.top{background:#d98b76}
+.rate b{width:58px;text-align:right;font-variant-numeric:tabular-nums;font-size:13px}
+.rate b.hot{color:var(--amber)}
+.rate b.top{color:var(--red)}
+
+.empty{padding:48px 16px;text-align:center;color:var(--muted);font-size:14px}
+.empty b{display:block;color:var(--navy);margin-bottom:6px;font-size:15px}
+footer{color:var(--muted);font-size:12px;line-height:1.7;padding:26px 0 50px}
+
+@media(prefers-reduced-motion:reduce){.fill{transition:none}}
+@media(max-width:820px){
+  .summary{grid-template-columns:1fr 1fr}
+  .rate{width:150px}
+  .rate b{width:50px}
+}
+@media(max-width:560px){
+  .hide-sm{display:none}
+  .summary{gap:10px}
+  h1{font-size:18px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div>
+      <h1>모집단위별 경쟁률 비교</h1>
+      <p>어느 지역·모집단위에 지원이 몰리는지 한 화면에서 확인합니다.</p>
+    </div>
+    <div class="io">
+      <button class="btn solid" id="loadBtn">CSV 불러오기</button>
+      <button class="btn" id="saveBtn">CSV 저장</button>
+      <input type="file" id="fileInput" accept=".csv" hidden>
+    </div>
+  </div>
+</header>
+
+<div class="flag" id="flag">
+  <div class="wrap">
+    <b>샘플 데이터입니다.</b>
+    실제 통계가 아니라 화면 확인용으로 지어낸 값입니다.
+    공공데이터포털에서 받은 CSV를 불러오면 이 줄이 사라집니다.
+  </div>
+</div>
+
+<main class="wrap">
+
+  <section class="summary">
+    <div class="stat"><span>모집단위</span><b id="s1">–</b><small id="s1b">&nbsp;</small></div>
+    <div class="stat"><span>선발예정 합계</span><b id="s2">–</b><small id="s2b">&nbsp;</small></div>
+    <div class="stat"><span>평균 경쟁률</span><b id="s3">–</b><small id="s3b">&nbsp;</small></div>
+    <div class="stat"><span>가장 몰린 곳</span><b id="s4">–</b><small id="s4b">&nbsp;</small></div>
+  </section>
+
+  <section class="panel">
+    <div class="controls">
+      <div><label for="fYear">연도</label><select id="fYear"></select></div>
+      <div><label for="fExam">시험명</label><select id="fExam"></select></div>
+      <div><label for="fJob">직렬</label><select id="fJob"></select></div>
+      <div><label for="fSort">정렬</label>
+        <select id="fSort">
+          <option value="rate-desc">경쟁률 높은순</option>
+          <option value="rate-asc">경쟁률 낮은순</option>
+          <option value="app-desc">출원인원 많은순</option>
+          <option value="quota-desc">선발예정 많은순</option>
+        </select>
+      </div>
+      <div class="grow"><label for="fText">검색</label>
+        <input id="fText" type="search" placeholder="모집단위 또는 직렬"></div>
+    </div>
+
+    <div class="head">
+      <h2>모집단위 목록</h2>
+      <span id="count">0건</span>
+    </div>
+
+    <div id="tableBox"></div>
+  </section>
+
+  <footer>
+    데이터 출처: 공공데이터포털(인사혁신처) 원서접수 통계.
+    경쟁률은 출원인원 ÷ 선발예정인원으로 계산합니다.<br>
+    STEP7 개인 프로젝트 · 수업 실습용 화면입니다.
+  </footer>
+</main>
+
+<script>
+/* ==========================================================
+   여기만 바꾸면 됩니다.
+   실제 데이터가 준비되면 아래 SAMPLE 배열을 지우거나,
+   화면에서 'CSV 불러오기'로 파일을 넣으면 그대로 대체됩니다.
+   필요한 열: 연도 / 시험명 / 직렬 / 모집단위 / 선발예정인원 / 출원인원
+   (경쟁률 열은 있으면 검증에만 쓰고, 없으면 직접 계산합니다)
+   ========================================================== */
+const SAMPLE = [
+  {연도:2026, 시험명:"9급 공채", 직렬:"세무", 모집단위:"가청",  선발예정인원:120, 출원인원:2400},
+  {연도:2026, 시험명:"9급 공채", 직렬:"세무", 모집단위:"나청",  선발예정인원:90,  출원인원:1350},
+  {연도:2026, 시험명:"9급 공채", 직렬:"세무", 모집단위:"다청",  선발예정인원:60,  출원인원:1560},
+  {연도:2026, 시험명:"9급 공채", 직렬:"세무", 모집단위:"라청",  선발예정인원:45,  출원인원:495},
+  {연도:2026, 시험명:"9급 공채", 직렬:"교정", 모집단위:"전국",  선발예정인원:200, 출원인원:3800},
+  {연도:2026, 시험명:"9급 공채", 직렬:"관세", 모집단위:"전국",  선발예정인원:35,  출원인원:1120},
+  {연도:2026, 시험명:"9급 공채", 직렬:"일반행정", 모집단위:"전국", 선발예정인원:300, 출원인원:9600},
+  {연도:2026, 시험명:"9급 공채", 직렬:"일반행정", 모집단위:"가지역", 선발예정인원:40, 출원인원:880},
+  {연도:2026, 시험명:"9급 공채", 직렬:"일반행정", 모집단위:"나지역", 선발예정인원:25, 출원인원:400},
+  {연도:2025, 시험명:"9급 공채", 직렬:"세무", 모집단위:"가청",  선발예정인원:130, 출원인원:2210},
+  {연도:2025, 시험명:"9급 공채", 직렬:"세무", 모집단위:"나청",  선발예정인원:95,  출원인원:1235},
+  {연도:2025, 시험명:"9급 공채", 직렬:"세무", 모집단위:"다청",  선발예정인원:55,  출원인원:1210},
+  {연도:2025, 시험명:"9급 공채", 직렬:"교정", 모집단위:"전국",  선발예정인원:190, 출원인원:3230},
+  {연도:2025, 시험명:"9급 공채", 직렬:"일반행정", 모집단위:"전국", 선발예정인원:280, 출원인원:8400},
+  {연도:2025, 시험명:"7급 공채", 직렬:"일반행정", 모집단위:"전국", 선발예정인원:110, 출원인원:5940},
+  {연도:2025, 시험명:"7급 공채", 직렬:"세무", 모집단위:"전국", 선발예정인원:30, 출원인원:1050},
+];
+
+/* 열 이름이 조금 달라도 알아서 맞춰 읽습니다 */
+const ALIAS = {
+  연도:["연도","년도","시험연도","시행연도","year"],
+  시험명:["시험명","시험종류","시험구분","시험","exam"],
+  직렬:["직렬","직류","직렬(직류)","모집직렬","직렬명"],
+  모집단위:["모집단위","지역","모집지역","지역구분","모집구분","단위"],
+  선발예정인원:["선발예정인원","선발인원","선발예정","모집인원"],
+  출원인원:["출원인원","원서접수인원","접수인원","지원인원","응시원서접수"],
+  경쟁률:["경쟁률","경쟁율"],
+};
+
+let rows = normalize(SAMPLE);
+let isSample = true;
+
+/* ---------- 데이터 처리 ---------- */
+function num(v){
+  if(v===null||v===undefined) return NaN;
+  const n = Number(String(v).replace(/[^0-9.\-]/g,""));
+  return Number.isFinite(n) ? n : NaN;
+}
+function pick(obj, key){
+  const keys = Object.keys(obj);
+  for(const cand of ALIAS[key]){
+    const hit = keys.find(k => k.replace(/\s/g,"") === cand);
+    if(hit) return obj[hit];
+  }
+  return undefined;
+}
+function normalize(list){
+  return list.map(r => {
+    const quota = num(pick(r,"선발예정인원"));
+    const apps  = num(pick(r,"출원인원"));
+    const given = num(pick(r,"경쟁률"));
+    const rate  = (quota > 0 && Number.isFinite(apps)) ? apps / quota : given;
+    return {
+      연도: String(pick(r,"연도") ?? "").trim(),
+      시험명: String(pick(r,"시험명") ?? "").trim(),
+      직렬: String(pick(r,"직렬") ?? "").trim(),
+      모집단위: String(pick(r,"모집단위") ?? "").trim(),
+      선발예정인원: quota, 출원인원: apps,
+      경쟁률: rate,
+      // 파일에 적힌 경쟁률과 계산값이 어긋나면 표시
+      불일치: Number.isFinite(given) && Number.isFinite(rate)
+              && Math.abs(given - rate) > 0.05,
+    };
+  }).filter(r => r.모집단위 || r.직렬);
+}
+
+/* ---------- CSV ---------- */
+function parseCSV(text){
+  text = text.replace(/^\uFEFF/,"");
+  const rowsOut=[]; let cell="", row=[], q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; }
+      else cell+=c;
+    }else{
+      if(c==='"') q=true;
+      else if(c===","){ row.push(cell); cell=""; }
+      else if(c==="\n"){ row.push(cell); rowsOut.push(row); row=[]; cell=""; }
+      else if(c!=="\r") cell+=c;
+    }
+  }
+  if(cell.length||row.length){ row.push(cell); rowsOut.push(row); }
+  const header = (rowsOut.shift()||[]).map(h=>h.trim());
+  return rowsOut.filter(r=>r.some(v=>String(v).trim()))
+    .map(r=>Object.fromEntries(header.map((h,i)=>[h,(r[i]??"").trim()])));
+}
+
+document.getElementById("loadBtn").onclick = () =>
+  document.getElementById("fileInput").click();
+
+document.getElementById("fileInput").onchange = e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const parsed = normalize(parseCSV(reader.result));
+    if(!parsed.length){
+      alert("읽을 수 있는 행이 없습니다. 열 이름에 모집단위·선발예정인원·출원인원이 있는지 확인하세요.");
+      return;
+    }
+    rows = parsed; isSample = false;
+    document.getElementById("flag").style.display = "none";
+    buildFilters(); render();
+  };
+  reader.onerror = () => alert("파일을 읽지 못했습니다. 다시 선택해 주세요.");
+  reader.readAsText(file, "utf-8");
+};
+
+document.getElementById("saveBtn").onclick = () => {
+  const list = filtered();
+  if(!list.length){ alert("저장할 행이 없습니다. 필터를 넓혀 보세요."); return; }
+  const head = ["연도","시험명","직렬","모집단위","선발예정인원","출원인원","경쟁률"];
+  const esc = v => `"${String(v ?? "").replaceAll('"','""')}"`;
+  const body = list.map(r => head.map(h =>
+    h==="경쟁률" ? (Number.isFinite(r.경쟁률)? r.경쟁률.toFixed(2):"") : r[h]));
+  const csv = "\uFEFF" + [head, ...body].map(r=>r.map(esc).join(",")).join("\r\n");
+  const url = URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `경쟁률_${new Date().toLocaleDateString("sv-SE")}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+
+/* ---------- 화면 ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,
+  m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+
+function buildFilters(){
+  const fill = (el, vals, all) => {
+    const keep = el.value;
+    el.innerHTML = `<option value="">${all}</option>` +
+      vals.map(v=>`<option>${esc(v)}</option>`).join("");
+    if([...el.options].some(o=>o.value===keep)) el.value = keep;
+  };
+  const uniq = k => [...new Set(rows.map(r=>r[k]).filter(Boolean))].sort();
+  fill($("fYear"), uniq("연도").reverse(), "전체");
+  fill($("fExam"), uniq("시험명"), "전체");
+  fill($("fJob"),  uniq("직렬"),   "전체");
+}
+
+function filtered(){
+  const y=$("fYear").value, e=$("fExam").value, j=$("fJob").value;
+  const kw=$("fText").value.trim().toLowerCase();
+  let list = rows.filter(r =>
+    (!y||r.연도===y) && (!e||r.시험명===e) && (!j||r.직렬===j) &&
+    (!kw || `${r.모집단위} ${r.직렬}`.toLowerCase().includes(kw)));
+  const s=$("fSort").value;
+  const by = {
+    "rate-desc": (a,b)=>(b.경쟁률||0)-(a.경쟁률||0),
+    "rate-asc":  (a,b)=>(a.경쟁률||0)-(b.경쟁률||0),
+    "app-desc":  (a,b)=>(b.출원인원||0)-(a.출원인원||0),
+    "quota-desc":(a,b)=>(b.선발예정인원||0)-(a.선발예정인원||0),
+  }[s];
+  return [...list].sort(by);
+}
+
+function render(){
+  const list = filtered();
+  $("count").textContent = `${list.length}건`;
+
+  // 요약
+  const rates = list.map(r=>r.경쟁률).filter(Number.isFinite);
+  const quota = list.reduce((s,r)=>s+(r.선발예정인원||0),0);
+  const apps  = list.reduce((s,r)=>s+(r.출원인원||0),0);
+  const avg   = rates.length ? rates.reduce((a,b)=>a+b,0)/rates.length : NaN;
+  const top   = list.filter(r=>Number.isFinite(r.경쟁률))
+                    .sort((a,b)=>b.경쟁률-a.경쟁률)[0];
+  $("s1").textContent = list.length ? list.length.toLocaleString() : "–";
+  $("s1b").textContent = list.length ? "필터 적용 기준" : "\u00a0";
+  $("s2").textContent = quota ? quota.toLocaleString()+"명" : "–";
+  $("s2b").textContent = apps ? `출원 ${apps.toLocaleString()}명` : "\u00a0";
+  $("s3").textContent = Number.isFinite(avg) ? avg.toFixed(1)+" : 1" : "–";
+  $("s3b").textContent = rates.length ? `${rates.length}개 단위 평균` : "\u00a0";
+  $("s4").textContent = top ? top.모집단위 : "–";
+  $("s4b").textContent = top ? `${top.직렬} · ${top.경쟁률.toFixed(1)} : 1` : "\u00a0";
+
+  const box = $("tableBox");
+  if(!list.length){
+    box.innerHTML = `<div class="empty"><b>조건에 맞는 모집단위가 없습니다.</b>
+      필터를 전체로 되돌리거나 검색어를 지워 보세요.</div>`;
+    return;
+  }
+
+  const max = Math.max(...list.map(r=>r.경쟁률||0), 1);
+  const rowsHtml = list.map((r,i)=>{
+    const rate = Number.isFinite(r.경쟁률) ? r.경쟁률 : null;
+    const pct  = rate ? Math.max(2, rate/max*100) : 0;
+    const lvl  = rate == null ? "" : rate >= max*0.8 ? "top" : rate >= max*0.5 ? "hot" : "";
+    return `<tr>
+      <td class="rank num">${i+1}</td>
+      <td><span class="unit">${esc(r.모집단위||"–")}</span>
+          <span class="sub">${esc(r.직렬)}${r.연도?" · "+esc(r.연도):""}${
+            r.불일치?' · <span style="color:var(--red)">경쟁률 값 불일치</span>':""}</span></td>
+      <td class="num hide-sm">${Number.isFinite(r.선발예정인원)?r.선발예정인원.toLocaleString():"–"}</td>
+      <td class="num hide-sm">${Number.isFinite(r.출원인원)?r.출원인원.toLocaleString():"–"}</td>
+      <td class="rate"><div class="rate-in">
+        <div class="track"><div class="fill ${lvl}" style="width:${pct}%"></div></div>
+        <b class="${lvl}">${rate ? rate.toFixed(1) : "–"}</b>
+      </div></td>
+    </tr>`;
+  }).join("");
+
+  box.innerHTML = `<table>
+    <thead><tr>
+      <th>순위</th><th>모집단위</th>
+      <th class="num hide-sm">선발예정</th><th class="num hide-sm">출원</th>
+      <th>경쟁률 (배)</th>
+    </tr></thead>
+    <tbody>${rowsHtml}</tbody></table>`;
+}
+
+["fYear","fExam","fJob","fSort","fText"].forEach(id=>{
+  const el = $(id);
+  el.addEventListener(id==="fText" ? "input" : "change", render);
+});
+
+buildFilters();
+render();
+</script>
+</body>
+</html>
